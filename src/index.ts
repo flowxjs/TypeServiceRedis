@@ -1,4 +1,5 @@
 import * as IORedis from 'ioredis';
+import { TypeContainer } from '@flowx/container';
 import cacheManager from 'cache-manager';
 import { setRedistTarget } from './cache';
 
@@ -21,12 +22,14 @@ export interface TRedis {
 }
 
 export class TypeRedis implements TRedis {
+  private readonly container?: TypeContainer;
   private readonly cache: cacheManager.MultiCache;
   constructor(options: IORedis.RedisOptions & {
     ttl?: number,
     max?: number,
     memory?: boolean,
-  }) {
+  }, container?: TypeContainer) {
+    this.container = container;
     const redisCache = cacheManager.caching(Object.assign({ 
       store: Redis, 
       ttl: options.ttl || 0
@@ -42,6 +45,7 @@ export class TypeRedis implements TRedis {
     }
     this.cache = cacheManager.multiCaching(pool);
     setRedistTarget(this);
+    this.container && this.container.injection.bind('Redis').toConstantValue(this);
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
@@ -82,12 +86,14 @@ export class TypeRedis implements TRedis {
 }
 
 export class TypeClusterRedis implements TRedis {
+  private readonly container?: TypeContainer;
   private readonly cache: cacheManager.MultiCache;
   constructor(options: TRedisStoreOptions & {
     ttl?: number,
     max?: number,
     memory?: boolean,
-  }) {
+  }, container?: TypeContainer) {
+    this.container = container;
     const redisCache = cacheManager.caching(Object.assign({ 
       store: Redis, 
       ttl: options.ttl || 0
@@ -103,6 +109,7 @@ export class TypeClusterRedis implements TRedis {
     }
     this.cache = cacheManager.multiCaching(pool);
     setRedistTarget(this);
+    this.container && this.container.injection.bind('Redis').toConstantValue(this);
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
