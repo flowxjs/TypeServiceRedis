@@ -29,12 +29,11 @@ export function cacheable(key: string | Function, ttl?: number): MethodDecorator
     clazz.set(property, { fn, ttl, key });
     descriptor.value = async function(...args: any[]) {
       if (!CacheTarget.value) throw new Error('You must setup TypeRedis first.');
-      const path = typeof key === 'function' ? key(...args) : encode(key, args);
+      const path = buildPathname(key, ...args);
       const result = await CacheTarget.value.get(path);
       if (result !== undefined) return result;
       const res = await Promise.resolve(fn.apply(this, args));
       await CacheTarget.value.set(path, res || null, ttl);
-      console.log('not cache')
       return res;
     }
   }
