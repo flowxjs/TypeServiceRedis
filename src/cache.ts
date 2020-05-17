@@ -64,5 +64,5 @@ export async function deleteCache(target: TClassIndefiner<any> | string, propert
 }
 
 export function buildPathname(key: string | Function, ...args: any[]): string {
-  return typeof key === 'function' ? key(...args)  : encode(key, args);
+  return typeof key === 'function' ? key(...args) : encode(key, args);
 }
