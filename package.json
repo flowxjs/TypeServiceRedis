@@ -1,0 +1,53 @@
+{
+  "name": "@flowx/redis",
+  "version": "1.0.0",
+  "description": "redis cache for typeservice",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "rm -rf dist && tsc -d"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/flowxjs/TypeServiceRedis.git"
+  },
+  "keywords": [
+    "redis",
+    "typeservice"
+  ],
+  "files": [
+    "dist",
+    "redis.js"
+  ],
+  "author": "cevio <evio@vip.qq.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/flowxjs/TypeServiceRedis/issues"
+  },
+  "homepage": "https://github.com/flowxjs/TypeServiceRedis#readme",
+  "devDependencies": {
+    "@reactivex/rxjs": "^6.5.5",
+    "@types/node": "^13.13.5",
+    "@types/npmlog": "^4.1.2",
+    "inversify": "^5.0.1",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^6.5.5",
+    "rxjs-compat": "^6.5.5",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "@flowx/container": "^1.0.3",
+    "@types/cache-manager": "^2.10.3",
+    "@types/ioredis": "^4.16.2",
+    "cache-manager": "^3.3.0",
+    "ioredis": "^4.17.1",
+    "string-placeholder": "^1.0.2"
+  },
+  "peerDependencies": {
+    "@types/npmlog": "^4.1.2",
+    "@reactivex/rxjs": "^6.5.5",
+    "inversify": "^5.0.1",
+    "reflect-metadata": "^0.1.13",
+    "rxjs-compat": "^6.5.5",
+    "rxjs": "^6.5.5"
+  }
+}
