@@ -2,6 +2,7 @@ import * as IORedis from 'ioredis';
 import { TypeContainer } from '@flowx/container';
 import cacheManager from 'cache-manager';
 import { setRedistTarget } from './cache';
+import { Observable, Observer } from '@reactivex/rxjs';
 
 export * from './cache';
 
@@ -45,7 +46,17 @@ export class TypeRedis implements TRedis {
     }
     this.cache = cacheManager.multiCaching(pool);
     setRedistTarget(this);
-    this.container && this.container.injection.bind('Redis').toConstantValue(this);
+    if (this.container) {
+      this.container.useEffect((observer: Observer<string>) =>  {
+        this.container.injection.bind('Redis').toConstantValue(this);
+        observer.next('Redis has been setup, you can use`@inject(\'Redis\')` to invoke, and you can use `@cacheable` decorator.');
+        observer.complete();
+        return Observable.create((observer: Observer<string>) => {
+          observer.next('Redis has been closed.');
+          observer.complete();
+        })
+      });
+    }
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
@@ -109,7 +120,17 @@ export class TypeClusterRedis implements TRedis {
     }
     this.cache = cacheManager.multiCaching(pool);
     setRedistTarget(this);
-    this.container && this.container.injection.bind('Redis').toConstantValue(this);
+    if (this.container) {
+      this.container.useEffect((observer: Observer<string>) =>  {
+        this.container.injection.bind('Redis').toConstantValue(this);
+        observer.next('Redis has been setup, you can use`@inject(\'Redis\')` to invoke, and you can use `@cacheable` decorator.');
+        observer.complete();
+        return Observable.create((observer: Observer<string>) => {
+          observer.next('Redis has been closed.');
+          observer.complete();
+        })
+      });
+    }
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
