@@ -27,12 +27,12 @@ export function cacheable(key: string | Function, ttl?: number): MethodDecorator
     }
     const clazz = CacheMap.get(target.constructor as TClassIndefiner<any>);
     clazz.set(property, { fn, ttl, key });
-    descriptor.value = async (...args: any[]) => {
+    descriptor.value = async function(...args: any[]) {
       if (!CacheTarget.value) throw new Error('You must setup TypeRedis first.');
       const path = typeof key === 'function' ? key(...args) : encode(key, args);
       const result = await CacheTarget.value.get(path);
       if (result !== undefined) return result;
-      const res = await Promise.resolve(fn(...args));
+      const res = await Promise.resolve(fn.apply(this, args));
       await CacheTarget.value.set(path, res || null, ttl);
       console.log('not cache')
       return res;
@@ -46,7 +46,8 @@ export async function buildCache<T = any>(target: TClassIndefiner<any>, property
   const _target = CacheMap.get(target);
   if (!_target.has(property)) throw new Error(`Cannot find the property <${property as string}> on target`);
   const { fn, ttl, key } = _target.get(property);
-  const result = await Promise.resolve<T>(fn(...args));
+  const resValue = CacheTarget.value.invoke(target, fn, args);
+  const result = await Promise.resolve<T>(resValue);
   const path = buildPathname(key, ...args);
   await CacheTarget.value.set(path, result || null, ttl);
   return result;

@@ -1,5 +1,5 @@
 import * as IORedis from 'ioredis';
-import { TypeContainer } from '@flowx/container';
+import { TypeContainer, TClassIndefiner } from '@flowx/container';
 import cacheManager from 'cache-manager';
 import { setRedistTarget } from './cache';
 import { Observable, Observer } from '@reactivex/rxjs';
@@ -20,16 +20,17 @@ export interface TRedis {
   get<T = any>(key: string): Promise<T>,
   del(key: string): Promise<void>,
   reset(): Promise<void>,
+  invoke<R = any, G extends any[] = []>(classModule: TClassIndefiner<any>, fn: Function, ...args: G): R | Promise<R>
 }
 
 export class TypeRedis implements TRedis {
   private readonly container?: TypeContainer;
   private readonly cache: cacheManager.MultiCache;
-  constructor(options: IORedis.RedisOptions & {
+  constructor(container: TypeContainer, options: IORedis.RedisOptions & {
     ttl?: number,
     max?: number,
     memory?: boolean,
-  }, container?: TypeContainer) {
+  }) {
     this.container = container;
     const redisCache = cacheManager.caching(Object.assign({ 
       store: Redis, 
@@ -46,17 +47,21 @@ export class TypeRedis implements TRedis {
     }
     this.cache = cacheManager.multiCaching(pool);
     setRedistTarget(this);
-    if (this.container) {
-      this.container.useEffect((observer: Observer<string>) =>  {
-        this.container.injection.bind('Redis').toConstantValue(this);
-        observer.next('Redis has been setup, you can use`@inject(\'Redis\')` to invoke, and you can use `@cacheable` decorator.');
+    this.container.useEffect((observer: Observer<string>) =>  {
+      this.container.injection.bind('Redis').toConstantValue(this);
+      observer.next('Redis has been setup, you can use`@inject(\'Redis\')` to invoke, and you can use `@cacheable` decorator.');
+      observer.complete();
+      return Observable.create((observer: Observer<string>) => {
+        observer.next('Redis has been closed.');
         observer.complete();
-        return Observable.create((observer: Observer<string>) => {
-          observer.next('Redis has been closed.');
-          observer.complete();
-        })
-      });
-    }
+      })
+    });
+  }
+
+  public invoke<R = any, G extends any[] = []>(classModule: TClassIndefiner<any>, fn: Function, ...args: G): R | Promise<R> {
+    const target = this.container.injection.get(classModule);
+    if (!target) throw new Error('Cannot find the taget');
+    return fn.apply(target, args);
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
@@ -99,11 +104,11 @@ export class TypeRedis implements TRedis {
 export class TypeClusterRedis implements TRedis {
   private readonly container?: TypeContainer;
   private readonly cache: cacheManager.MultiCache;
-  constructor(options: TRedisStoreOptions & {
+  constructor(container: TypeContainer, options: TRedisStoreOptions & {
     ttl?: number,
     max?: number,
     memory?: boolean,
-  }, container?: TypeContainer) {
+  }) {
     this.container = container;
     const redisCache = cacheManager.caching(Object.assign({ 
       store: Redis, 
@@ -120,17 +125,21 @@ export class TypeClusterRedis implements TRedis {
     }
     this.cache = cacheManager.multiCaching(pool);
     setRedistTarget(this);
-    if (this.container) {
-      this.container.useEffect((observer: Observer<string>) =>  {
-        this.container.injection.bind('Redis').toConstantValue(this);
-        observer.next('Redis has been setup, you can use`@inject(\'Redis\')` to invoke, and you can use `@cacheable` decorator.');
+    this.container.useEffect((observer: Observer<string>) =>  {
+      this.container.injection.bind('Redis').toConstantValue(this);
+      observer.next('Redis has been setup, you can use`@inject(\'Redis\')` to invoke, and you can use `@cacheable` decorator.');
+      observer.complete();
+      return Observable.create((observer: Observer<string>) => {
+        observer.next('Redis has been closed.');
         observer.complete();
-        return Observable.create((observer: Observer<string>) => {
-          observer.next('Redis has been closed.');
-          observer.complete();
-        })
-      });
-    }
+      })
+    });
+  }
+
+  public invoke<R = any, G extends any[] = []>(classModule: TClassIndefiner<any>, fn: (...args: G) => R, ...args: G) {
+    const target = this.container.injection.get(classModule);
+    if (!target) throw new Error('Cannot find the taget');
+    return fn.apply(target, args);
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
