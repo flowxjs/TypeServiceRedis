@@ -1,4 +1,4 @@
-import * as IORedis from 'ioredis';
+import IORedis from 'ioredis';
 import { TypeContainer, TClassIndefiner } from '@flowx/container';
 import cacheManager from 'cache-manager';
 import { Observable, Observer } from '@reactivex/rxjs';
