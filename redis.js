@@ -23,6 +23,8 @@ const redisStore = (...args) => {
 
   self.getClient = () => redisCache;
 
+  self.disconnect = () => redisCache.disconnect();
+
   self.set = (key, value, options, cb) => (
     new Promise((resolve, reject) => {
       if (typeof options === 'function') {
