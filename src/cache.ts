@@ -45,7 +45,7 @@ export async function buildCache<T = any>(target: TClassIndefiner<any>, property
   const _target = CacheMap.get(target);
   if (!_target.has(property)) throw new Error(`Cannot find the property <${property as string}> on target`);
   const { fn, ttl, key } = _target.get(property);
-  const resValue = CacheTarget.value.invoke(target, fn, args);
+  const resValue = CacheTarget.value.invoke(target, fn, ...args);
   const result = await Promise.resolve<T>(resValue);
   const path = buildPathname(key, ...args);
   await CacheTarget.value.set(path, result || null, ttl);
