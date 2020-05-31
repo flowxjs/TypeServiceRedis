@@ -19,7 +19,7 @@ export interface TRedis {
   get<T = any>(key: string): Promise<T>,
   del(key: string): Promise<void>,
   reset(): Promise<void>,
-  invoke<R = any, G extends any[] = []>(classModule: TClassIndefiner<any>, fn: Function, ...args: G): R | Promise<R>
+  invoke<R = any>(classModule: TClassIndefiner<any>, fn: Function, args: any[]): R | Promise<R>
 }
 
 export class TypeRedis implements TRedis {
@@ -56,10 +56,10 @@ export class TypeRedis implements TRedis {
     });
   }
 
-  public invoke<R = any, G extends any[] = []>(classModule: TClassIndefiner<any>, fn: Function, ...args: G): R | Promise<R> {
+  public invoke<R>(classModule: TClassIndefiner<any>, fn: any, args: any[]) {
     const target = this.container.injection.get(classModule);
     if (!target) throw new Error('Cannot find the taget');
-    return fn.apply(target, args);
+    return fn.apply(target, args) as R;
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
@@ -133,10 +133,10 @@ export class TypeClusterRedis implements TRedis {
     });
   }
 
-  public invoke<R = any, G extends any[] = []>(classModule: TClassIndefiner<any>, fn: (...args: G) => R, ...args: G) {
+  public invoke<R>(classModule: TClassIndefiner<any>, fn: any, args: any[]) {
     const target = this.container.injection.get(classModule);
     if (!target) throw new Error('Cannot find the taget');
-    return fn.apply(target, args);
+    return fn.apply(target, args) as R;
   }
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {

@@ -2,11 +2,13 @@ import { TClassIndefiner, TypeServiceInjection } from '@flowx/container';
 import { TRedis } from '.';
 const encode = require('string-placeholder');
 
-export const CacheMap = new Map<TClassIndefiner<any>, Map<string | symbol, {
-  fn: Function,
+type CacheMapItem<T extends { [key: string]: (...args: any[]) => any }> = Map<keyof T, {
+  fn: T[keyof T],
   ttl?: number,
   key: string | Function
-}>>();
+}>
+
+export const CacheMap = new Map<TClassIndefiner<any>, CacheMapItem<any>>();
 
 export function cacheable(key: string | Function, ttl?: number): MethodDecorator {
   return (target, property, descriptor: TypedPropertyDescriptor<any>) => {
@@ -14,7 +16,7 @@ export function cacheable(key: string | Function, ttl?: number): MethodDecorator
     if (!CacheMap.has(target.constructor as TClassIndefiner<any>)) {
       CacheMap.set(
         target.constructor as TClassIndefiner<any>, 
-        new Map<string | symbol, { fn: Function, ttl?: number, key: string | Function }>()
+        new Map() as CacheMapItem<any>
       );
     }
     const clazz = CacheMap.get(target.constructor as TClassIndefiner<any>);
@@ -32,31 +34,58 @@ export function cacheable(key: string | Function, ttl?: number): MethodDecorator
   }
 }
 
-export async function buildCache<T = any>(target: TClassIndefiner<any>, property: string | symbol, ...args: any[]) {
+export function getCache<T extends { [key: string]: (...args: any[]) => any }>(target: TClassIndefiner<T>, property: keyof T) {
   const redis = TypeServiceInjection.get<TRedis>('Redis');
   if (!redis) throw new Error('You must setup TypeRedis first.');
   if (!CacheMap.has(target)) throw new Error('Cannot find the cache build target');
-  const _target = CacheMap.get(target);
-  if (!_target.has(property)) throw new Error(`Cannot find the property <${property as string}> on target`);
-  const { fn, ttl, key } = _target.get(property);
-  const resValue = redis.invoke(target, fn, ...args);
-  const result = await Promise.resolve<T>(resValue);
-  const path = buildPathname(key, ...args);
-  await redis.set(path, result || null, ttl);
-  return result;
+  const _target = CacheMap.get(target) as CacheMapItem<T>;
+  if (!_target.has(property)) throw new Error(`Cannot find the property <${property}> on target`);
+  return {
+    get: Get(redis, target, property, _target),
+    build: Build(redis, target, property, _target),
+    delete: Delete(redis, _target, property),
+  }
 }
 
-export async function deleteCache(target: TClassIndefiner<any> | string, property?: string | symbol, ...args: any[]): Promise<void> {
-  const redis = TypeServiceInjection.get<TRedis>('Redis');
-  if (!redis) throw new Error('You must setup TypeRedis first.');
-  if (typeof target === 'string') return await redis.del(target);
-  if (!CacheMap.has(target)) throw new Error('Cannot find the cache build target');
-  const _target = CacheMap.get(target);
-  if (!_target.has(property)) throw new Error(`Cannot find the property <${property as string}> on target`);
-  const { key } = _target.get(property);
+function Get<T extends { [key: string]: (...args: any[]) => any }>(
+  redis: TRedis, 
+  classModule: TClassIndefiner<T>, 
+  property: keyof T, 
+  target: CacheMapItem<T>
+) {
+  const { fn } = target.get(property);
+  return async <G extends any[]>(...args: G) => {
+    const resValue = redis.invoke<ReturnType<T[keyof T]>>(classModule, fn, args);
+    return await Promise.resolve(resValue);
+  }
   
-  const path = buildPathname(key, ...args);
-  return await redis.del(path);
+}
+
+function Build<T extends { [key: string]: (...args: any[]) => any }>(
+  redis: TRedis, 
+  classModule: TClassIndefiner<T>, 
+  property: keyof T, 
+  target: CacheMapItem<T>
+) {
+  const { fn, ttl, key } = target.get(property);
+  return async <G extends any[]>(...args: G) => {
+    const result = await Get(redis, classModule, property, target)(...args);
+    const path = buildPathname(key, ...args);
+    await redis.set(path, result || null, ttl);
+    return result;
+  }
+}
+
+function Delete<T extends { [key: string]: (...args: any[]) => any }>(
+  redis: TRedis, 
+  target: CacheMapItem<T>, 
+  property: keyof T
+) {
+  const { key } = target.get(property);
+  return async (...args: any[]) => {
+    const path = buildPathname(key, ...args);
+    return await redis.del(path); 
+  }
 }
 
 export function buildPathname(key: string | Function, ...args: any[]): string {
