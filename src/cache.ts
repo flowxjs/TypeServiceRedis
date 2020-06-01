@@ -2,8 +2,8 @@ import { TClassIndefiner, TypeServiceInjection } from '@flowx/container';
 import { TRedis } from '.';
 const encode = require('string-placeholder');
 
-type CacheMapItem<T extends { [key: string]: (...args: any[]) => any }> = Map<keyof T, {
-  fn: T[keyof T],
+type CacheMapItem<T> = Map<keyof T, {
+  fn: any,
   ttl?: number,
   key: string | Function
 }>
@@ -11,7 +11,7 @@ type CacheMapItem<T extends { [key: string]: (...args: any[]) => any }> = Map<ke
 export const CacheMap = new Map<TClassIndefiner<any>, CacheMapItem<any>>();
 
 export function cacheable(key: string | Function, ttl?: number): MethodDecorator {
-  return (target, property, descriptor: TypedPropertyDescriptor<any>) => {
+  return (target: Object, property: string | symbol, descriptor: TypedPropertyDescriptor<any>) => {
     const fn = descriptor.value;
     if (!CacheMap.has(target.constructor as TClassIndefiner<any>)) {
       CacheMap.set(
@@ -34,7 +34,7 @@ export function cacheable(key: string | Function, ttl?: number): MethodDecorator
   }
 }
 
-export function getCache<T extends { [key: string]: (...args: any[]) => any }>(target: TClassIndefiner<T>, property: keyof T) {
+export function getCache<T>(target: TClassIndefiner<T>, property: keyof T) {
   const redis = TypeServiceInjection.get<TRedis>('Redis');
   if (!redis) throw new Error('You must setup TypeRedis first.');
   if (!CacheMap.has(target)) throw new Error('Cannot find the cache build target');
@@ -47,7 +47,7 @@ export function getCache<T extends { [key: string]: (...args: any[]) => any }>(t
   }
 }
 
-function Get<T extends { [key: string]: (...args: any[]) => any }>(
+function Get<T>(
   redis: TRedis, 
   classModule: TClassIndefiner<T>, 
   property: keyof T, 
@@ -55,19 +55,19 @@ function Get<T extends { [key: string]: (...args: any[]) => any }>(
 ) {
   const { fn } = target.get(property);
   return async <G extends any[]>(...args: G) => {
-    const resValue = redis.invoke<ReturnType<T[keyof T]>>(classModule, fn, args);
+    const resValue = redis.invoke<ReturnType<typeof fn>>(classModule, fn, args);
     return await Promise.resolve(resValue);
   }
   
 }
 
-function Build<T extends { [key: string]: (...args: any[]) => any }>(
+function Build<T extends Object>(
   redis: TRedis, 
   classModule: TClassIndefiner<T>, 
   property: keyof T, 
   target: CacheMapItem<T>
 ) {
-  const { fn, ttl, key } = target.get(property);
+  const { ttl, key } = target.get(property);
   return async <G extends any[]>(...args: G) => {
     const result = await Get(redis, classModule, property, target)(...args);
     const path = buildPathname(key, ...args);
@@ -76,7 +76,7 @@ function Build<T extends { [key: string]: (...args: any[]) => any }>(
   }
 }
 
-function Delete<T extends { [key: string]: (...args: any[]) => any }>(
+function Delete<T extends Object>(
   redis: TRedis, 
   target: CacheMapItem<T>, 
   property: keyof T
