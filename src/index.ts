@@ -64,7 +64,7 @@ export class TypeRedis implements TRedis {
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.cache.set(key, value, ttl, (err) => {
+      this.cache.set(key, value, {ttl}, (err) => {
         if (err) return reject(err);
         resolve();
       });
@@ -141,7 +141,7 @@ export class TypeClusterRedis implements TRedis {
 
   public set<T = any>(key: string, value: T, ttl: number = 0): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.cache.set(key, value, ttl, (err) => {
+      this.cache.set(key, value, {ttl}, (err) => {
         if (err) return reject(err);
         resolve();
       });
