@@ -84,7 +84,9 @@ function Delete<T extends Object>(
   const { key } = target.get(property);
   return async (...args: any[]) => {
     const path = buildPathname(key, ...args);
-    return await redis.del(path); 
+    try{
+      return await redis.del(path); 
+    }catch(e){}
   }
 }
 
